@@ -5,6 +5,7 @@ import { Logo } from "@/components/veloop/logo";
 import { DemoBanner } from "@/components/veloop/demo-banner";
 import { NotificationBell } from "@/components/veloop/notification-bell";
 import { BottomNavigation } from "@/components/veloop/bottom-navigation";
+import { SignOutButton } from "@/components/veloop/sign-out-button";
 
 export default async function ClientLayout({ children }: { children: React.ReactNode }) {
   const user = await requireRole("customer");
@@ -18,7 +19,10 @@ export default async function ClientLayout({ children }: { children: React.React
           <Link href="/app" aria-label="Accueil">
             <Logo />
           </Link>
-          <NotificationBell notifications={notifications} />
+          <div className="flex items-center gap-0.5">
+            <NotificationBell notifications={notifications} />
+            <SignOutButton variant="icon" />
+          </div>
         </div>
       </header>
 
