@@ -123,12 +123,25 @@ Codes promo de démo : `VELOOP10` (-10 %), `BIENVENUE` (-5 €).
 
 ### Supabase
 1. Créez un projet Supabase.
-2. Exécutez `supabase/migrations/0001_init.sql` puis `0002_rls.sql` (SQL Editor ou `supabase db push`).
+2. Exécutez les migrations dans l'ordre (SQL Editor ou `supabase db push`) :
+   `0001_init` (schéma) → `0002_rls` → `0003_helper_functions` → `0004_security_hardening`
+   → `0005_business_rpcs` → `0006_fix_rls_recursion`.
 3. (Optionnel) `supabase/seed.sql` pour les paramètres tarifaires.
-4. Renseignez `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`.
-5. Le trigger `on_auth_user_created` crée automatiquement le profil (et le profil chauffeur) à l'inscription via les métadonnées `role/first_name/last_name`.
+4. Renseignez `NEXT_PUBLIC_SUPABASE_URL` et `NEXT_PUBLIC_SUPABASE_ANON_KEY` (la présence de
+   ces deux variables fait basculer l'app en mode Supabase). `SUPABASE_SERVICE_ROLE_KEY` est
+   optionnelle : la logique métier transverse passe par des fonctions `SECURITY DEFINER`.
+5. Le trigger `on_auth_user_created` crée automatiquement le profil (et le profil chauffeur) à
+   l'inscription via les métadonnées `role/first_name/last_name`.
+6. (Recommandé) Activez *Leaked password protection* dans Authentication → Policies.
 
-> Le store mémoire (`lib/data/store.ts`) expose une API **async** identique à ce que fournirait Supabase : le branchement consiste à remplacer l'implémentation, sans toucher aux pages ni aux actions.
+> **Bascule automatique.** `lib/data/store.ts` choisit entre `demo-store.ts` (mémoire) et
+> `supabase-store.ts` (PostgREST + RLS + RPC) selon la configuration. `lib/auth/` bascule de la
+> même façon entre cookie de démo et Supabase Auth. Aucune page ni action à modifier.
+
+> **Mutations & RLS.** Les opérations transverses (assignation, changement de statut, paiement,
+> validation chauffeur, notifications inter-utilisateurs) sont des fonctions `SECURITY DEFINER`
+> (`supabase/migrations/0005`, `0006`) qui appliquent leurs propres contrôles d'autorisation —
+> ce qui évite d'exposer la clé `service_role` côté serveur.
 
 ### Stripe (mode test)
 1. `STRIPE_SECRET_KEY`, `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`.
