@@ -320,6 +320,12 @@ export const supabaseDb: Db = {
     const { error } = await sb.rpc("assign_ride_driver", { p_ride_id: rideId, p_driver_id: driverId });
     if (error) throw new Error(error.message);
   },
+  async autoAssignNearestDriver(rideId) {
+    const sb = await getSupabaseServerClient();
+    const { data, error } = await sb.rpc("assign_nearest_driver", { p_ride_id: rideId });
+    if (error) throw new Error(error.message);
+    return Boolean(data);
+  },
   async updateRideStatus(rideId, status) {
     const sb = await getSupabaseServerClient();
     const { error } = await sb.rpc("update_ride_status", { p_ride_id: rideId, p_status: status });

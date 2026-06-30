@@ -3,7 +3,7 @@ import type { StoreState } from "./state";
 import { buildSeed } from "@/lib/demo/seed";
 import { makeId } from "@/lib/utils";
 import { computePrice } from "@/lib/pricing";
-import { estimateRoute, estimateDriverArrivalMin } from "@/lib/geo";
+import { estimateRoute, estimateDriverArrivalMin, haversineKm } from "@/lib/geo";
 import {
   RIDE_STATUS_META,
   type ApprovalStatus,
@@ -431,6 +431,28 @@ export const demoDb = {
     const driver = s.profiles.find((p) => p.id === driverId);
     pushNotification(s, ride.customer_id, "Chauffeur trouvé", `${driver?.first_name ?? "Votre chauffeur"} a accepté votre course.`, "ride");
     pushNotification(s, driverId, "Course attribuée", "Une course vous a été attribuée.", "driver");
+  },
+
+  /** Assign the nearest online approved driver (simulated automatic dispatch). */
+  async autoAssignNearestDriver(rideId: string): Promise<boolean> {
+    const s = getState();
+    const ride = s.rideRequests.find((r) => r.id === rideId);
+    if (!ride || ride.driver_id || (ride.status !== "searching_driver" && ride.status !== "requested")) return false;
+    const candidates = s.driverProfiles.filter(
+      (d) => d.approval_status === "approved" && d.is_online && d.current_latitude != null && d.current_longitude != null,
+    );
+    if (candidates.length === 0) return false;
+    const nearest = candidates
+      .map((d) => ({
+        d,
+        dist: haversineKm(
+          { lat: ride.pickup_latitude, lng: ride.pickup_longitude },
+          { lat: d.current_latitude!, lng: d.current_longitude! },
+        ),
+      }))
+      .sort((a, b) => a.dist - b.dist)[0];
+    await this.assignDriver(rideId, nearest.d.user_id, "system");
+    return true;
   },
 
   async updateRideStatus(rideId: string, status: RideStatus, changedBy: string, coords?: { lat: number; lng: number }): Promise<RideWithRelations | null> {

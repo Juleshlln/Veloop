@@ -38,6 +38,13 @@ export const config = {
 /** True when no real backend is wired — the whole app runs on simulated data. */
 export const IS_DEMO = !config.supabase.enabled;
 
+/**
+ * Whether to expose the one-click demo login on the auth pages.
+ * Always on in demo mode; in Supabase mode it must be opted into explicitly
+ * (NEXT_PUBLIC_SHOW_DEMO_LOGIN=true) so production never exposes demo creds.
+ */
+export const SHOW_DEMO_LOGIN = IS_DEMO || process.env.NEXT_PUBLIC_SHOW_DEMO_LOGIN === "true";
+
 /** Share of the fare paid to the driver (Stripe Connect-ready later). */
 export const DRIVER_SHARE = 0.75;
 

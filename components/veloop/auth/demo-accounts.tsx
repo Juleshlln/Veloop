@@ -4,6 +4,7 @@ import * as React from "react";
 import { User, Bike, ShieldCheck } from "lucide-react";
 import { demoSignInAction } from "@/lib/auth/actions";
 import { Spinner } from "@/components/ui/spinner";
+import { SHOW_DEMO_LOGIN } from "@/lib/config";
 
 const ACCOUNTS = [
   { role: "customer" as const, label: "Client", icon: User, email: "client@veloop.fr" },
@@ -11,9 +12,13 @@ const ACCOUNTS = [
   { role: "admin" as const, label: "Admin", icon: ShieldCheck, email: "admin@veloop.fr" },
 ];
 
-/** One-click sign-in for the seeded demo accounts (work in both demo and Supabase modes). */
+/**
+ * One-click sign-in for the seeded demo accounts. Hidden in production unless
+ * NEXT_PUBLIC_SHOW_DEMO_LOGIN=true, so demo credentials are never exposed.
+ */
 export function DemoAccounts() {
   const [pending, setPending] = React.useState<string | null>(null);
+  if (!SHOW_DEMO_LOGIN) return null;
 
   return (
     <div className="mt-6">

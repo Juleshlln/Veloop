@@ -9,7 +9,7 @@ import { Spinner } from "@/components/ui/spinner";
 import { ConfirmationSheet } from "./confirmation-sheet";
 import { RatingStars } from "./rating-stars";
 import { toast } from "@/components/ui/toaster";
-import { IS_DEMO } from "@/lib/config";
+import { SHOW_DEMO_LOGIN } from "@/lib/config";
 import { cancelRideAction, customerConfirmInspectionAction, rateRideAction } from "@/lib/actions/rides";
 import { autoDispatchAction, demoAdvanceRideAction } from "@/lib/actions/demo";
 import { ACTIVE_RIDE_STATUSES, type RideStatus } from "@/lib/types";
@@ -88,7 +88,7 @@ export function CustomerRideActions({ rideId, status, hasRating, customerInspect
         </Button>
       )}
 
-      {IS_DEMO && isActive && (
+      {SHOW_DEMO_LOGIN && isActive && (
         <Button
           variant="outline"
           className="w-full"
