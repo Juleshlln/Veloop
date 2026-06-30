@@ -1,5 +1,7 @@
 import { MapPin, Flag, Bike } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { config } from "@/lib/config";
+import { LiveMap } from "./live-map";
 import type { Coordinates } from "@/lib/types";
 
 interface MapPreviewProps {
@@ -19,6 +21,11 @@ const PAD = 36;
  * Projects pickup/destination/driver into an SVG bounding box.
  */
 export function MapPreview({ pickup, destination, driver, className, height = 200 }: MapPreviewProps) {
+  // Real interactive map when a Mapbox token is configured; SVG fallback otherwise.
+  if (config.mapbox.enabled) {
+    return <LiveMap pickup={pickup} destination={destination} driver={driver} className={className} height={height} />;
+  }
+
   const points = [pickup, destination, ...(driver ? [driver] : [])];
   const lats = points.map((p) => p.lat);
   const lngs = points.map((p) => p.lng);
