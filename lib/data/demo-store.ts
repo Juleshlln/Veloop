@@ -3,7 +3,7 @@ import type { StoreState } from "./state";
 import { buildSeed } from "@/lib/demo/seed";
 import { makeId } from "@/lib/utils";
 import { computePrice } from "@/lib/pricing";
-import { estimateRoute, estimateDriverArrivalMin, haversineKm } from "@/lib/geo";
+import { estimateRouteReal, estimateDriverArrivalMin, haversineKm } from "@/lib/geo";
 import {
   RIDE_STATUS_META,
   type ApprovalStatus,
@@ -298,7 +298,7 @@ export const demoDb = {
     notes?: string | null;
   }): Promise<RideWithRelations> {
     const s = getState();
-    const route = estimateRoute(
+    const route = await estimateRouteReal(
       { lat: input.pickup.lat, lng: input.pickup.lng },
       { lat: input.destination.lat, lng: input.destination.lng },
     );

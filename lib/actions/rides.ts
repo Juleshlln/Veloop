@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { db } from "@/lib/data/store";
 import { requireRole, requireUser } from "@/lib/auth/session";
-import { estimateRoute, estimateDriverArrivalMin } from "@/lib/geo";
+import { estimateRouteReal, estimateDriverArrivalMin } from "@/lib/geo";
 import { computePrice, type PriceBreakdown } from "@/lib/pricing";
 import { createRidePaymentIntent } from "@/lib/payments";
 import type { ActionState } from "./account";
@@ -38,7 +38,7 @@ export async function estimateRideAction(input: unknown): Promise<EstimateResult
   if (!parsed.success) return { error: "Adresses invalides." };
   const { pickup, destination, scheduledAt, promoCode } = parsed.data;
 
-  const route = estimateRoute(
+  const route = await estimateRouteReal(
     { lat: pickup.lat, lng: pickup.lng },
     { lat: destination.lat, lng: destination.lng },
   );

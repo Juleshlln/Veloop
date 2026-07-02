@@ -84,6 +84,17 @@ export function estimateRoute(pickup: Coordinates, destination: Coordinates): Ro
   return { distanceKm, durationMin: estimateDurationMin(distanceKm) };
 }
 
+/**
+ * Best-available route estimate: real road distance/duration from the Mapbox
+ * Directions API when configured, haversine heuristic otherwise. Server-side
+ * pricing should use this so the fare reflects the actual route.
+ */
+export async function estimateRouteReal(pickup: Coordinates, destination: Coordinates): Promise<RouteEstimate> {
+  const real = await getDirections(pickup, destination);
+  if (real) return { distanceKm: real.distanceKm, durationMin: real.durationMin };
+  return estimateRoute(pickup, destination);
+}
+
 /** Local search over the demo dataset. */
 function searchDemoPlaces(query: string, limit = 6): GeoPlace[] {
   const q = query.trim().toLowerCase();

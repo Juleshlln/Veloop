@@ -12,7 +12,7 @@ import { DriverCard } from "@/components/veloop/driver-card";
 import { RatingStars } from "@/components/veloop/rating-stars";
 import { CustomerRideActions } from "@/components/veloop/customer-ride-actions";
 import { InspectionSummary } from "@/components/veloop/inspection-summary";
-import { AutoRefresher } from "@/components/veloop/auto-refresher";
+import { RealtimeRefresher } from "@/components/veloop/realtime-refresher";
 import { EmergencyButton } from "@/components/veloop/emergency-button";
 import { formatDateTime, formatDistance, formatDuration, formatEuro } from "@/lib/utils";
 import { ACTIVE_RIDE_STATUSES, type Coordinates } from "@/lib/types";
@@ -177,7 +177,7 @@ export default async function CoursePage({ params }: { params: Promise<{ id: str
         </div>
       )}
 
-      {isActive && <AutoRefresher enabled />}
+      {isActive && <RealtimeRefresher rideId={ride.id} driverId={ride.driver_id} enabled />}
     </div>
   );
 }

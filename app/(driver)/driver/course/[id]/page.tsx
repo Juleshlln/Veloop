@@ -10,7 +10,7 @@ import { RideStatusBadge } from "@/components/veloop/ride-status-badge";
 import { RideProgress } from "@/components/veloop/ride-progress";
 import { MapPreview } from "@/components/veloop/map-preview";
 import { DriverRideControls } from "@/components/veloop/driver/driver-ride-controls";
-import { AutoRefresher } from "@/components/veloop/auto-refresher";
+import { RealtimeRefresher } from "@/components/veloop/realtime-refresher";
 import { EmergencyButton } from "@/components/veloop/emergency-button";
 import { DriverLocationPublisher } from "@/components/veloop/driver-location-publisher";
 import { DRIVER_SHARE } from "@/lib/config";
@@ -122,7 +122,7 @@ export default async function DriverCoursePage({ params }: { params: Promise<{ i
           <EmergencyButton rideId={ride.id} />
         </div>
       )}
-      {isActive && <AutoRefresher enabled />}
+      {isActive && <RealtimeRefresher rideId={ride.id} driverId={ride.driver_id} enabled />}
     </div>
   );
 }

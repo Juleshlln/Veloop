@@ -1,6 +1,6 @@
 import "server-only";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
-import { estimateRoute, estimateDriverArrivalMin } from "@/lib/geo";
+import { estimateRouteReal, estimateDriverArrivalMin } from "@/lib/geo";
 import { computePrice } from "@/lib/pricing";
 import type {
   ApprovalStatus,
@@ -232,7 +232,7 @@ export const supabaseDb: Db = {
   async createRide(input) {
     const sb = await getSupabaseServerClient();
     const pricing = await this.getPricing();
-    const route = estimateRoute(
+    const route = await estimateRouteReal(
       { lat: input.pickup.lat, lng: input.pickup.lng },
       { lat: input.destination.lat, lng: input.destination.lng },
     );
