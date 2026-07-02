@@ -8,6 +8,7 @@ import type {
   DriverDocument,
   DriverProfile,
   Incident,
+  InspectionPhoto,
   Notification,
   Payment,
   PaymentStatus,
@@ -346,13 +347,65 @@ export const supabaseDb: Db = {
   },
   async upsertInspection(rideId, driverId, patch) {
     const sb = await getSupabaseServerClient();
+    // Timestamp each sign-off the moment it flips to confirmed (evidence trail).
+    const stamped = { ...patch };
+    if (patch.driver_confirmed) stamped.driver_confirmed_at = new Date().toISOString();
+    if (patch.customer_confirmed) stamped.customer_confirmed_at = new Date().toISOString();
     const { data, error } = await sb
       .from("vehicle_inspections")
-      .upsert({ ride_id: rideId, driver_id: driverId, ...patch }, { onConflict: "ride_id" })
+      .upsert({ ride_id: rideId, driver_id: driverId, ...stamped }, { onConflict: "ride_id" })
       .select("*")
       .single();
     if (error) throw new Error(error.message);
     return data as VehicleInspection;
+  },
+
+  async addInspectionPhoto(rideId, driverId, photoType, fileUrl) {
+    const sb = await getSupabaseServerClient();
+    let inspection = await this.getInspection(rideId);
+    if (!inspection) inspection = await this.upsertInspection(rideId, driverId, {});
+
+    // fileUrl arrives as a data URL; decode and store the binary in the bucket.
+    const base64 = fileUrl.split(",")[1] ?? "";
+    const bytes = Buffer.from(base64, "base64");
+    const path = `${rideId}/${photoType}-${Date.now()}.jpg`;
+    const { error: uploadError } = await sb.storage
+      .from("inspection-photos")
+      .upload(path, bytes, { contentType: "image/jpeg" });
+    if (uploadError) throw new Error(uploadError.message);
+
+    // One photo per angle: remove any previous row (and file) for this type.
+    const { data: previous } = await sb
+      .from("inspection_photos")
+      .select("id, file_url")
+      .eq("inspection_id", inspection.id)
+      .eq("photo_type", photoType);
+    if (previous?.length) {
+      await sb.from("inspection_photos").delete().in("id", previous.map((p) => (p as Row).id as string));
+    }
+
+    const { data, error } = await sb
+      .from("inspection_photos")
+      .insert({ inspection_id: inspection.id, photo_type: photoType, file_url: path })
+      .select("*")
+      .single();
+    if (error) throw new Error(error.message);
+    return data as InspectionPhoto;
+  },
+
+  async listInspectionPhotos(rideId) {
+    const sb = await getSupabaseServerClient();
+    const inspection = await this.getInspection(rideId);
+    if (!inspection) return [];
+    const { data } = await sb.from("inspection_photos").select("*").eq("inspection_id", inspection.id);
+    const photos = (data ?? []) as InspectionPhoto[];
+    // file_url holds a storage path — swap in a signed URL for display.
+    return Promise.all(
+      photos.map(async (p) => {
+        const { data: signed } = await sb.storage.from("inspection-photos").createSignedUrl(p.file_url, 3600);
+        return { ...p, file_url: signed?.signedUrl ?? p.file_url };
+      }),
+    );
   },
 
   /* ---------------- Payments ---------------- */

@@ -112,8 +112,14 @@ export async function customerConfirmInspectionAction(rideId: string): Promise<A
   const ride = await db.getRide(rideId);
   if (!ride || ride.customer_id !== user.id) return { error: "Action non autorisée." };
   if (!ride.driver_id) return { error: "Aucun chauffeur assigné." };
+  // The customer signs off on the evidence, so it must exist first.
+  const inspection = await db.getInspection(rideId);
+  if (!inspection?.driver_confirmed) {
+    return { error: "Le chauffeur doit d'abord réaliser et signer l'état des lieux." };
+  }
   await db.upsertInspection(rideId, ride.driver_id, { customer_confirmed: true });
   revalidatePath(`/app/course/${rideId}`);
+  revalidatePath(`/driver/course/${rideId}`);
   return { ok: true };
 }
 

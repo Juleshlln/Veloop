@@ -27,9 +27,10 @@ interface Props {
   status: RideStatus;
   hasRating: boolean;
   customerInspectionConfirmed: boolean;
+  driverInspectionConfirmed: boolean;
 }
 
-export function CustomerRideActions({ rideId, status, hasRating, customerInspectionConfirmed }: Props) {
+export function CustomerRideActions({ rideId, status, hasRating, customerInspectionConfirmed, driverInspectionConfirmed }: Props) {
   const router = useRouter();
   const [pending, startTransition] = React.useTransition();
   const [cancelOpen, setCancelOpen] = React.useState(false);
@@ -65,20 +66,26 @@ export function CustomerRideActions({ rideId, status, hasRating, customerInspect
 
   return (
     <div className="space-y-3">
-      {status === "vehicle_check" && !customerInspectionConfirmed && (
+      {status === "vehicle_check" && !customerInspectionConfirmed && !driverInspectionConfirmed && (
+        <p className="rounded-xl bg-subtle p-3 text-center text-sm text-muted-foreground">
+          Le chauffeur réalise l&apos;état des lieux (photos, kilométrage)…
+        </p>
+      )}
+
+      {status === "vehicle_check" && !customerInspectionConfirmed && driverInspectionConfirmed && (
         <Button
           size="lg"
           className="w-full"
           disabled={pending}
-          onClick={() => run(() => customerConfirmInspectionAction(rideId), () => toast({ title: "État du véhicule confirmé", tone: "success" }))}
+          onClick={() => run(() => customerConfirmInspectionAction(rideId), () => toast({ title: "État des lieux confirmé", tone: "success" }))}
         >
-          <ClipboardCheck /> Confirmer l&apos;état de mon véhicule
+          <ClipboardCheck /> Je confirme l&apos;état des lieux
         </Button>
       )}
 
       {status === "vehicle_check" && customerInspectionConfirmed && (
         <p className="rounded-xl bg-primary-soft p-3 text-center text-sm font-medium text-primary">
-          Vous avez confirmé. En attente de la confirmation du chauffeur.
+          État des lieux signé par les deux parties. Le chauffeur peut démarrer.
         </p>
       )}
 

@@ -149,6 +149,8 @@ export interface VehicleInspection {
   driver_id: string;
   customer_confirmed: boolean;
   driver_confirmed: boolean;
+  driver_confirmed_at: string | null;
+  customer_confirmed_at: string | null;
   initial_mileage: number | null;
   final_mileage: number | null;
   notes: string | null;

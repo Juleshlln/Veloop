@@ -23,7 +23,10 @@ export default async function DriverCoursePage({ params }: { params: Promise<{ i
   const ride = await db.getRideWithRelations(id);
   if (!ride || ride.driver_id !== user.id) notFound();
 
-  const inspection = await db.getInspection(id);
+  const [inspection, inspectionPhotos] = await Promise.all([
+    db.getInspection(id),
+    db.listInspectionPhotos(id),
+  ]);
   const isActive = ACTIVE_RIDE_STATUSES.includes(ride.status);
   const remuneration = (ride.final_price ?? ride.estimated_price) * DRIVER_SHARE;
 
@@ -106,7 +109,13 @@ export default async function DriverCoursePage({ params }: { params: Promise<{ i
       )}
 
       {/* Controls */}
-      <DriverRideControls rideId={ride.id} status={ride.status} driverInspectionConfirmed={Boolean(inspection?.driver_confirmed)} />
+      <DriverRideControls
+        rideId={ride.id}
+        status={ride.status}
+        driverInspectionConfirmed={Boolean(inspection?.driver_confirmed)}
+        customerInspectionConfirmed={Boolean(inspection?.customer_confirmed)}
+        inspectionPhotos={inspectionPhotos}
+      />
 
       {isActive && (
         <div className="flex justify-center pt-2">

@@ -4,8 +4,9 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { db } from "@/lib/data/store";
-import { requireRole } from "@/lib/auth/session";
+import { requireRole, requireUser } from "@/lib/auth/session";
 import { canTransition, type RideStatus } from "@/lib/types";
+import { INSPECTION_ANGLES, REQUIRED_ANGLE_TYPES, angleLabel } from "@/lib/inspection";
 import type { ActionState } from "./account";
 
 export async function toggleOnlineAction(online: boolean): Promise<ActionState> {
@@ -53,11 +54,14 @@ export async function advanceRideStatusAction(rideId: string, next: RideStatus):
   if (!ride || ride.driver_id !== user.id) return { error: "Action non autorisée." };
   if (!canTransition(ride.status, next)) return { error: "Transition de statut invalide." };
 
-  // Gate: the trip can only start once the driver checklist is confirmed.
+  // Gate: the trip can only start once BOTH parties signed the inspection.
   if (next === "trip_started") {
     const inspection = await db.getInspection(rideId);
     if (!inspection?.driver_confirmed) {
-      return { error: "Complétez la checklist de vérification avant de démarrer." };
+      return { error: "Signez l'état des lieux avant de démarrer." };
+    }
+    if (!inspection.customer_confirmed) {
+      return { error: "Le client doit confirmer l'état des lieux avant le départ." };
     }
   }
 
@@ -68,20 +72,56 @@ export async function advanceRideStatusAction(rideId: string, next: RideStatus):
   return { ok: true };
 }
 
+/** Attach an inspection photo (data URL, compressed client-side) to a ride. */
+export async function uploadInspectionPhotoAction(
+  rideId: string,
+  photoType: string,
+  dataUrl: string,
+): Promise<ActionState> {
+  const user = await requireUser();
+  const ride = await db.getRide(rideId);
+  if (!ride || (ride.driver_id !== user.id && ride.customer_id !== user.id)) {
+    return { error: "Action non autorisée." };
+  }
+  if (!INSPECTION_ANGLES.some((a) => a.type === photoType)) return { error: "Type de photo invalide." };
+  if (!dataUrl.startsWith("data:image/jpeg;base64,") || dataUrl.length > 3_000_000) {
+    return { error: "Photo invalide ou trop lourde." };
+  }
+  if (!ride.driver_id) return { error: "Aucun chauffeur assigné." };
+  await db.addInspectionPhoto(rideId, ride.driver_id, photoType, dataUrl);
+  revalidatePath(`/driver/course/${rideId}`);
+  revalidatePath(`/app/course/${rideId}`);
+  return { ok: true };
+}
+
 const checklistSchema = z.object({
   rideId: z.string().min(1),
-  initialMileage: z.number().optional(),
+  initialMileage: z
+    .number({ message: "Kilométrage requis." })
+    .int()
+    .positive("Kilométrage requis."),
+  damageNotes: z.string().max(1000).optional(),
 });
 
 export async function driverConfirmInspectionAction(input: unknown): Promise<ActionState> {
   const user = await requireRole("driver");
   const parsed = checklistSchema.safeParse(input);
-  if (!parsed.success) return { error: "Données invalides." };
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Données invalides." };
   const ride = await db.getRide(parsed.data.rideId);
   if (!ride || ride.driver_id !== user.id) return { error: "Action non autorisée." };
+
+  // Insurance gate: the 4 exterior angles must be photographed before sign-off.
+  const photos = await db.listInspectionPhotos(parsed.data.rideId);
+  const taken = new Set(photos.map((p) => p.photo_type));
+  const missing = REQUIRED_ANGLE_TYPES.filter((t) => !taken.has(t));
+  if (missing.length > 0) {
+    return { error: `Photos manquantes : ${missing.map(angleLabel).join(", ")}.` };
+  }
+
   await db.upsertInspection(parsed.data.rideId, user.id, {
     driver_confirmed: true,
-    initial_mileage: parsed.data.initialMileage ?? null,
+    initial_mileage: parsed.data.initialMileage,
+    notes: parsed.data.damageNotes?.trim() || null,
   });
   revalidatePath(`/driver/course/${parsed.data.rideId}`);
   revalidatePath(`/app/course/${parsed.data.rideId}`);

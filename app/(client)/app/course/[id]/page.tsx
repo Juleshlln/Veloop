@@ -11,6 +11,7 @@ import { MapPreview } from "@/components/veloop/map-preview";
 import { DriverCard } from "@/components/veloop/driver-card";
 import { RatingStars } from "@/components/veloop/rating-stars";
 import { CustomerRideActions } from "@/components/veloop/customer-ride-actions";
+import { InspectionSummary } from "@/components/veloop/inspection-summary";
 import { AutoRefresher } from "@/components/veloop/auto-refresher";
 import { EmergencyButton } from "@/components/veloop/emergency-button";
 import { formatDateTime, formatDistance, formatDuration, formatEuro } from "@/lib/utils";
@@ -30,7 +31,10 @@ export default async function CoursePage({ params }: { params: Promise<{ id: str
   const ride = await db.getRideWithRelations(id);
   if (!ride || ride.customer_id !== user.id) notFound();
 
-  const inspection = await db.getInspection(id);
+  const [inspection, inspectionPhotos] = await Promise.all([
+    db.getInspection(id),
+    db.listInspectionPhotos(id),
+  ]);
   const isActive = ACTIVE_RIDE_STATUSES.includes(ride.status);
   const isSearching = ride.status === "searching_driver" && !ride.driver_id;
 
@@ -92,8 +96,8 @@ export default async function CoursePage({ params }: { params: Promise<{ id: str
         <RideProgress status={ride.status} />
       </Card>
 
-      {/* Vehicle inspection checklist */}
-      {ride.status === "vehicle_check" && (
+      {/* Vehicle inspection — guidance before the driver signs, evidence after. */}
+      {ride.status === "vehicle_check" && !inspection?.driver_confirmed && (
         <Card className="border-primary/30 p-5">
           <h2 className="flex items-center gap-2 font-bold text-foreground">
             <ShieldCheck className="size-5 text-primary" /> Vérification avant départ
@@ -107,6 +111,10 @@ export default async function CoursePage({ params }: { params: Promise<{ id: str
             ))}
           </ul>
         </Card>
+      )}
+
+      {inspection?.driver_confirmed && (ride.status === "vehicle_check" || ride.status === "trip_completed") && (
+        <InspectionSummary inspection={inspection} photos={inspectionPhotos} />
       )}
 
       {/* Trip details */}
@@ -160,6 +168,7 @@ export default async function CoursePage({ params }: { params: Promise<{ id: str
         status={ride.status}
         hasRating={Boolean(ride.rating)}
         customerInspectionConfirmed={Boolean(inspection?.customer_confirmed)}
+        driverInspectionConfirmed={Boolean(inspection?.driver_confirmed)}
       />
 
       {isActive && (

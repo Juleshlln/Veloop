@@ -12,6 +12,7 @@ import {
   type Incident,
   type IncidentPriority,
   type IncidentType,
+  type InspectionPhoto,
   type Notification,
   type NotificationType,
   type Payment,
@@ -541,6 +542,8 @@ export const demoDb = {
         driver_id: driverId,
         customer_confirmed: false,
         driver_confirmed: false,
+        driver_confirmed_at: null,
+        customer_confirmed_at: null,
         initial_mileage: null,
         final_mileage: null,
         notes: null,
@@ -548,8 +551,40 @@ export const demoDb = {
       };
       s.vehicleInspections.push(insp);
     }
+    // Timestamp each sign-off the moment it flips to confirmed (evidence trail).
+    if (patch.driver_confirmed && !insp.driver_confirmed) patch.driver_confirmed_at = now();
+    if (patch.customer_confirmed && !insp.customer_confirmed) patch.customer_confirmed_at = now();
     Object.assign(insp, patch);
     return clone(insp);
+  },
+
+  async addInspectionPhoto(rideId: string, driverId: string, photoType: string, fileUrl: string): Promise<InspectionPhoto> {
+    const s = getState();
+    let insp = s.vehicleInspections.find((i) => i.ride_id === rideId);
+    if (!insp) {
+      insp = await this.upsertInspection(rideId, driverId, {});
+      insp = s.vehicleInspections.find((i) => i.ride_id === rideId)!;
+    }
+    // One photo per angle: replace any previous shot of the same type.
+    s.inspectionPhotos = s.inspectionPhotos.filter(
+      (p) => !(p.inspection_id === insp!.id && p.photo_type === photoType),
+    );
+    const photo: InspectionPhoto = {
+      id: makeId("iph"),
+      inspection_id: insp.id,
+      photo_type: photoType,
+      file_url: fileUrl,
+      created_at: now(),
+    };
+    s.inspectionPhotos.push(photo);
+    return clone(photo);
+  },
+
+  async listInspectionPhotos(rideId: string): Promise<InspectionPhoto[]> {
+    const s = getState();
+    const insp = s.vehicleInspections.find((i) => i.ride_id === rideId);
+    if (!insp) return [];
+    return clone(s.inspectionPhotos.filter((p) => p.inspection_id === insp.id));
   },
 
   /* ---------------- Payments ---------------- */
