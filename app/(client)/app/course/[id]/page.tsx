@@ -34,12 +34,17 @@ export default async function CoursePage({ params }: { params: Promise<{ id: str
   const isActive = ACTIVE_RIDE_STATUSES.includes(ride.status);
   const isSearching = ride.status === "searching_driver" && !ride.driver_id;
 
-  // Simulated driver position for the map.
+  // Driver position for the map — prefer the driver's real live GPS.
   let driverCoord: Coordinates | null = null;
   const pickup = { lat: ride.pickup_latitude, lng: ride.pickup_longitude };
   const dest = { lat: ride.destination_latitude, lng: ride.destination_longitude };
-  if (ride.driverProfile?.current_latitude != null && ride.status === "driver_on_the_way") {
-    driverCoord = { lat: ride.driverProfile.current_latitude, lng: ride.driverProfile.current_longitude! };
+  const liveDriver =
+    ride.driverProfile?.current_latitude != null
+      ? { lat: ride.driverProfile.current_latitude, lng: ride.driverProfile.current_longitude! }
+      : null;
+  const movingStatuses = ["driver_on_the_way", "trip_started", "trip_in_progress"];
+  if (liveDriver && movingStatuses.includes(ride.status)) {
+    driverCoord = liveDriver; // real-time position
   } else if (ride.status === "driver_arrived" || ride.status === "vehicle_check") {
     driverCoord = pickup;
   } else if (ride.status === "trip_started" || ride.status === "trip_in_progress") {

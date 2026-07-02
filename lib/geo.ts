@@ -136,3 +136,39 @@ export function findPlaceById(id: string): GeoPlace | undefined {
 export function isInZone(coords: Coordinates): boolean {
   return haversineKm(coords, LAUNCH_ZONE.center) <= LAUNCH_ZONE.radiusKm;
 }
+
+export interface RouteGeometry {
+  /** [lng, lat] pairs following the actual road network. */
+  coordinates: [number, number][];
+  distanceKm: number;
+  durationMin: number;
+}
+
+/**
+ * Real driving route between two points via the Mapbox Directions API.
+ * Returns null when no token is configured (caller draws a straight line).
+ */
+export async function getDirections(from: Coordinates, to: Coordinates): Promise<RouteGeometry | null> {
+  if (!config.mapbox.enabled) return null;
+  try {
+    const coords = `${from.lng},${from.lat};${to.lng},${to.lat}`;
+    const url = new URL(`https://api.mapbox.com/directions/v5/mapbox/driving/${coords}`);
+    url.searchParams.set("geometries", "geojson");
+    url.searchParams.set("overview", "full");
+    url.searchParams.set("access_token", config.mapbox.token!);
+    const res = await fetch(url, { next: { revalidate: 30 } });
+    if (!res.ok) return null;
+    const data = (await res.json()) as {
+      routes: { distance: number; duration: number; geometry: { coordinates: [number, number][] } }[];
+    };
+    const route = data.routes?.[0];
+    if (!route) return null;
+    return {
+      coordinates: route.geometry.coordinates,
+      distanceKm: Math.round((route.distance / 1000) * 10) / 10,
+      durationMin: Math.max(1, Math.round(route.duration / 60)),
+    };
+  } catch {
+    return null;
+  }
+}

@@ -12,6 +12,7 @@ import { MapPreview } from "@/components/veloop/map-preview";
 import { DriverRideControls } from "@/components/veloop/driver/driver-ride-controls";
 import { AutoRefresher } from "@/components/veloop/auto-refresher";
 import { EmergencyButton } from "@/components/veloop/emergency-button";
+import { DriverLocationPublisher } from "@/components/veloop/driver-location-publisher";
 import { DRIVER_SHARE } from "@/lib/config";
 import { formatDistance, formatDuration, formatEuro } from "@/lib/utils";
 import { ACTIVE_RIDE_STATUSES } from "@/lib/types";
@@ -38,8 +39,15 @@ export default async function DriverCoursePage({ params }: { params: Promise<{ i
       <MapPreview
         pickup={{ lat: ride.pickup_latitude, lng: ride.pickup_longitude }}
         destination={{ lat: ride.destination_latitude, lng: ride.destination_longitude }}
+        driver={
+          isActive && ride.driverProfile?.current_latitude != null
+            ? { lat: ride.driverProfile.current_latitude, lng: ride.driverProfile.current_longitude! }
+            : undefined
+        }
         height={180}
       />
+
+      {isActive && <DriverLocationPublisher />}
 
       {/* Client */}
       {ride.customer && (

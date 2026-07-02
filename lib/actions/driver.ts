@@ -20,6 +20,13 @@ export async function toggleOnlineAction(online: boolean): Promise<ActionState> 
   return { ok: true };
 }
 
+/** Publish the driver's live GPS position (called periodically from the browser). */
+export async function updateDriverLocationAction(lat: number, lng: number): Promise<void> {
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
+  const user = await requireRole("driver");
+  await db.updateDriverProfile(user.id, { current_latitude: lat, current_longitude: lng });
+}
+
 export async function acceptRideAction(rideId: string): Promise<ActionState> {
   const user = await requireRole("driver");
   const dp = await db.getDriverProfile(user.id);
